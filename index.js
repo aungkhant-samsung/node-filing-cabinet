@@ -344,35 +344,39 @@ function commonJSLookup(options) {
     return packageJson;
   }
 
-  const tsCompilerOptions = getCompilerOptionsFromTsConfig(tsConfig);
-  const allowMixedJsAndTs = tsCompilerOptions.allowJs;
-  let extensions = ['.js', '.jsx'];
-  if (allowMixedJsAndTs) {
-    // Let the typescript engine take a stab at resolving this one. This lookup will
-    // respect any custom paths in tsconfig.json
-    result = tsLookup(options);
-    if (result) {
-      debug('typescript successfully resolved commonjs module: ', result);
-      return result;
-    }
-    // Otherwise, let the commonJS resolver look for plain .ts file imports.
-    extensions = extensions.concat(['.ts', '.tsx']);
-  }
-
   try {
-    result = resolve.sync(dependency, {
-      extensions,
-      basedir: directory,
-      packageFilter: nodeModulesConfig && nodeModulesConfig.entry ? packageFilter : undefined,
-      // Add fileDir to resolve index.js files in that dir
-      moduleDirectory: ['node_modules', directory]
-    });
-    debug('resolved path: ' + result);
-  } catch (e) {
-    debug('could not resolve ' + dependency);
-  }
+    const tsCompilerOptions = getCompilerOptionsFromTsConfig(tsConfig);
+    const allowMixedJsAndTs = tsCompilerOptions.allowJs;
+    let extensions = ['.js', '.jsx'];
+    if (allowMixedJsAndTs) {
+      // Let the typescript engine take a stab at resolving this one. This lookup will
+      // respect any custom paths in tsconfig.json
+      result = tsLookup(options);
+      if (result) {
+        debug('typescript successfully resolved commonjs module: ', result);
+        return result;
+      }
+      // Otherwise, let the commonJS resolver look for plain .ts file imports.
+      extensions = extensions.concat(['.ts', '.tsx']);
+    }
 
-  return result;
+    try {
+      result = resolve.sync(dependency, {
+        extensions,
+        basedir: directory,
+        packageFilter: nodeModulesConfig && nodeModulesConfig.entry ? packageFilter : undefined,
+        // Add fileDir to resolve index.js files in that dir
+        moduleDirectory: ['node_modules', directory]
+      });
+      debug('resolved path: ' + result);
+    } catch (e) {
+      debug('could not resolve ' + dependency);
+    }
+
+    return result;
+  } finally {
+    appModulePath.removePath(moduleLookupDir)
+  }
 }
 
 function resolveWebpackPath({dependency, filename, directory, webpackConfig}) {
